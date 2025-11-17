@@ -4,8 +4,8 @@ A full-stack AI-powered workspace booking system with voice capabilities.
 
 ## 🌐 Live Demo
 
-- **Frontend**: [Your Vercel URL - Will be added after deployment]
-- **Backend**: [Your Railway URL - Will be added after deployment]
+- **Frontend**: https://workspace-booking-system-3f8ur5k2i-learnwithlaxman.vercel.app/
+- **Backend**: https://workspace-booking-system-ay8j.onrender.com
 
 ## 🛠️ Tech Stack
 
