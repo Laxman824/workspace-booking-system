@@ -5,7 +5,7 @@ A full-stack AI-powered workspace booking system with real-time voice chat, dyna
 
 ## 🌐 Live Demo
 
-- **Frontend**: https://workspace-booking-system-3f8ur5k2i-learnwithlaxman.vercel.app/
+- **Frontend**: https://workspace-booking-system.vercel.app/
 - **Backend**: https://workspace-booking-system-ay8j.onrender.com
 - **Repository**: https://github.com/Laxman824/workspace-booking-system
 
