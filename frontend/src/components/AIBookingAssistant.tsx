@@ -1,650 +1,650 @@
 
 
-// now adding boooking capabilies  also
-import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { bookingsApi } from '../services/api';
-import './AIBookingAssistant.css';
+// // now adding boooking capabilies  also
+// import React, { useState, useRef, useCallback, useEffect } from 'react';
+// import { bookingsApi } from '../services/api';
+// import './AIBookingAssistant.css';
 
-interface Message {
-  id: string;
-  role: 'user' | 'assistant' | 'system';
-  content: string;
-  timestamp: Date;
-  bookingData?: any;
-}
+// interface Message {
+//   id: string;
+//   role: 'user' | 'assistant' | 'system';
+//   content: string;
+//   timestamp: Date;
+//   bookingData?: any;
+// }
 
-interface BookingInfo {
-  userName?: string;
-  roomId?: string;
-  date?: string;
-  startTime?: string;
-  endTime?: string;
-  capacity?: number;
-  awaitingConfirmation?: boolean;
-}
+// interface BookingInfo {
+//   userName?: string;
+//   roomId?: string;
+//   date?: string;
+//   startTime?: string;
+//   endTime?: string;
+//   capacity?: number;
+//   awaitingConfirmation?: boolean;
+// }
 
-interface AIBookingAssistantProps {
-  onClose: () => void;
-  rooms: Array<{
-    id: string;
-    name: string;
-    baseHourlyRate: number;
-    capacity: number;
-  }>;
-  onBookingSuccess?: (booking: any) => void;
-}
+// interface AIBookingAssistantProps {
+//   onClose: () => void;
+//   rooms: Array<{
+//     id: string;
+//     name: string;
+//     baseHourlyRate: number;
+//     capacity: number;
+//   }>;
+//   onBookingSuccess?: (booking: any) => void;
+// }
 
-export const AIBookingAssistant: React.FC<AIBookingAssistantProps> = ({ 
-  onClose, 
-  rooms,
-  onBookingSuccess 
-}) => {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      role: 'assistant',
-      content: '👋 Hi! I\'m your AI booking assistant powered by **Google Gemini**!\n\nI can:\n• Answer questions about rooms\n• Help you find the perfect space\n• **Book rooms directly for you**\n\n💡 Just chat naturally or try:\n"Book Cabin 1 for John on Nov 18 from 2PM to 4PM"\n\nWhat can I help you with? ✨',
-      timestamp: new Date()
-    }
-  ]);
-  const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [isTyping, setIsTyping] = useState(false);
-  const [isBooking, setIsBooking] = useState(false);
-  const [useGemini, setUseGemini] = useState(true);
+// export const AIBookingAssistant: React.FC<AIBookingAssistantProps> = ({ 
+//   onClose, 
+//   rooms,
+//   onBookingSuccess 
+// }) => {
+//   const [messages, setMessages] = useState<Message[]>([
+//     {
+//       id: '1',
+//       role: 'assistant',
+//       content: '👋 Hi! I\'m your AI booking assistant powered by **Google Gemini**!\n\nI can:\n• Answer questions about rooms\n• Help you find the perfect space\n• **Book rooms directly for you**\n\n💡 Just chat naturally or try:\n"Book Cabin 1 for John on Nov 18 from 2PM to 4PM"\n\nWhat can I help you with? ✨',
+//       timestamp: new Date()
+//     }
+//   ]);
+//   const [input, setInput] = useState('');
+//   const [isLoading, setIsLoading] = useState(false);
+//   const [isTyping, setIsTyping] = useState(false);
+//   const [isBooking, setIsBooking] = useState(false);
+//   const [useGemini, setUseGemini] = useState(true);
   
-  const bookingInfoRef = useRef<BookingInfo>({});
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+//   const bookingInfoRef = useRef<BookingInfo>({});
+//   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+//   const scrollToBottom = () => {
+//     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+//   };
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+//   useEffect(() => {
+//     scrollToBottom();
+//   }, [messages]);
 
-  const getRoomContext = useCallback(() => {
-    return `
-Available Rooms:
-${rooms.map(room => `
-- ${room.name} (ID: ${room.id})
-  Capacity: ${room.capacity} people
-  Base Rate: ₹${room.baseHourlyRate}/hour
-  Peak Rate: ₹${room.baseHourlyRate * 1.5}/hour (Mon-Fri 10AM-1PM, 4PM-7PM)
-`).join('\n')}
+//   const getRoomContext = useCallback(() => {
+//     return `
+// Available Rooms:
+// ${rooms.map(room => `
+// - ${room.name} (ID: ${room.id})
+//   Capacity: ${room.capacity} people
+//   Base Rate: ₹${room.baseHourlyRate}/hour
+//   Peak Rate: ₹${room.baseHourlyRate * 1.5}/hour (Mon-Fri 10AM-1PM, 4PM-7PM)
+// `).join('\n')}
 
-Booking Rules:
-- Minimum: 30 minutes, Maximum: 12 hours
-- Business hours: 6:00 AM - 11:00 PM
-- Cancellation: 2+ hours before start time
-- Peak hours: Mon-Fri 10AM-1PM & 4PM-7PM (1.5× rate)
-`;
-  }, [rooms]);
+// Booking Rules:
+// - Minimum: 30 minutes, Maximum: 12 hours
+// - Business hours: 6:00 AM - 11:00 PM
+// - Cancellation: 2+ hours before start time
+// - Peak hours: Mon-Fri 10AM-1PM & 4PM-7PM (1.5× rate)
+// `;
+//   }, [rooms]);
 
-  // Extract booking information from text
-  const extractBookingInfo = (text: string): Partial<BookingInfo> => {
-    const info: Partial<BookingInfo> = {};
+//   // Extract booking information from text
+//   const extractBookingInfo = (text: string): Partial<BookingInfo> => {
+//     const info: Partial<BookingInfo> = {};
     
-    // Extract name
-    const namePatterns = [
-      /(?:for|name(?:\s+is)?)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/,
-      /(?:I'm|I am)\s+([A-Z][a-z]+)/,
-      /\bname[:\s]+([A-Z][a-z]+)/i
-    ];
+//     // Extract name
+//     const namePatterns = [
+//       /(?:for|name(?:\s+is)?)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/,
+//       /(?:I'm|I am)\s+([A-Z][a-z]+)/,
+//       /\bname[:\s]+([A-Z][a-z]+)/i
+//     ];
     
-    for (const pattern of namePatterns) {
-      const match = text.match(pattern);
-      if (match) {
-        info.userName = match[1].trim();
-        break;
-      }
-    }
+//     for (const pattern of namePatterns) {
+//       const match = text.match(pattern);
+//       if (match) {
+//         info.userName = match[1].trim();
+//         break;
+//       }
+//     }
 
-    // Extract room
-    const roomMentioned = rooms.find(r => 
-      text.toLowerCase().includes(r.name.toLowerCase()) || 
-      text.toLowerCase().includes(r.id.toLowerCase())
-    );
-    if (roomMentioned) {
-      info.roomId = roomMentioned.id;
-    }
+//     // Extract room
+//     const roomMentioned = rooms.find(r => 
+//       text.toLowerCase().includes(r.name.toLowerCase()) || 
+//       text.toLowerCase().includes(r.id.toLowerCase())
+//     );
+//     if (roomMentioned) {
+//       info.roomId = roomMentioned.id;
+//     }
 
-    // Extract capacity
-    const peopleMatch = text.match(/(\d+)\s*(?:people|persons|pax)/i);
-    if (peopleMatch) {
-      info.capacity = parseInt(peopleMatch[1]);
-    }
+//     // Extract capacity
+//     const peopleMatch = text.match(/(\d+)\s*(?:people|persons|pax)/i);
+//     if (peopleMatch) {
+//       info.capacity = parseInt(peopleMatch[1]);
+//     }
 
-    // Extract date
-    const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+//     // Extract date
+//     const today = new Date();
+//     const tomorrow = new Date(today);
+//     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    if (/\btomorrow\b/i.test(text)) {
-      info.date = tomorrow.toISOString().split('T')[0];
-    } else if (/\btoday\b/i.test(text)) {
-      info.date = today.toISOString().split('T')[0];
-    } else {
-      const dateMatch = text.match(/(?:Nov(?:ember)?)\s+(\d{1,2})/i);
-      if (dateMatch) {
-        const day = dateMatch[1];
-        const year = today.getFullYear();
-        info.date = `${year}-11-${String(day).padStart(2, '0')}`;
-      }
+//     if (/\btomorrow\b/i.test(text)) {
+//       info.date = tomorrow.toISOString().split('T')[0];
+//     } else if (/\btoday\b/i.test(text)) {
+//       info.date = today.toISOString().split('T')[0];
+//     } else {
+//       const dateMatch = text.match(/(?:Nov(?:ember)?)\s+(\d{1,2})/i);
+//       if (dateMatch) {
+//         const day = dateMatch[1];
+//         const year = today.getFullYear();
+//         info.date = `${year}-11-${String(day).padStart(2, '0')}`;
+//       }
       
-      const isoMatch = text.match(/(\d{4}-\d{2}-\d{2})/);
-      if (isoMatch) {
-        info.date = isoMatch[1];
-      }
-    }
+//       const isoMatch = text.match(/(\d{4}-\d{2}-\d{2})/);
+//       if (isoMatch) {
+//         info.date = isoMatch[1];
+//       }
+//     }
 
-    // Extract times
-    const times: string[] = [];
-    const timePattern = /\b(\d{1,2})(?::(\d{2}))?\s*(AM|PM)/gi;
-    let match;
+//     // Extract times
+//     const times: string[] = [];
+//     const timePattern = /\b(\d{1,2})(?::(\d{2}))?\s*(AM|PM)/gi;
+//     let match;
     
-    while ((match = timePattern.exec(text)) !== null) {
-      let hours = parseInt(match[1]);
-      const minutes = match[2] || '00';
-      const period = match[3].toUpperCase();
+//     while ((match = timePattern.exec(text)) !== null) {
+//       let hours = parseInt(match[1]);
+//       const minutes = match[2] || '00';
+//       const period = match[3].toUpperCase();
       
-      if (period === 'PM' && hours !== 12) hours += 12;
-      if (period === 'AM' && hours === 12) hours = 0;
+//       if (period === 'PM' && hours !== 12) hours += 12;
+//       if (period === 'AM' && hours === 12) hours = 0;
       
-      times.push(`${String(hours).padStart(2, '0')}:${minutes}:00`);
-    }
+//       times.push(`${String(hours).padStart(2, '0')}:${minutes}:00`);
+//     }
 
-    if (times.length >= 2) {
-      info.startTime = times[0];
-      info.endTime = times[1];
-    } else if (times.length === 1) {
-      info.startTime = times[0];
+//     if (times.length >= 2) {
+//       info.startTime = times[0];
+//       info.endTime = times[1];
+//     } else if (times.length === 1) {
+//       info.startTime = times[0];
       
-      const durationMatch = text.match(/(\d+)\s*(?:hours?|hrs)/i);
-      if (durationMatch) {
-        const [hours, minutes] = info.startTime.split(':').map(Number);
-        const duration = parseInt(durationMatch[1]);
-        const endHours = hours + duration;
-        info.endTime = `${String(endHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
-      }
-    }
+//       const durationMatch = text.match(/(\d+)\s*(?:hours?|hrs)/i);
+//       if (durationMatch) {
+//         const [hours, minutes] = info.startTime.split(':').map(Number);
+//         const duration = parseInt(durationMatch[1]);
+//         const endHours = hours + duration;
+//         info.endTime = `${String(endHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
+//       }
+//     }
 
-    return info;
-  };
+//     return info;
+//   };
 
-  const mergeBookingInfo = (newInfo: Partial<BookingInfo>) => {
-    bookingInfoRef.current = {
-      ...bookingInfoRef.current,
-      ...newInfo
-    };
-    return bookingInfoRef.current;
-  };
+//   const mergeBookingInfo = (newInfo: Partial<BookingInfo>) => {
+//     bookingInfoRef.current = {
+//       ...bookingInfoRef.current,
+//       ...newInfo
+//     };
+//     return bookingInfoRef.current;
+//   };
 
-  const hasCompleteInfo = (info: BookingInfo): boolean => {
-    return !!(info.userName && info.date && info.startTime && info.endTime);
-  };
+//   const hasCompleteInfo = (info: BookingInfo): boolean => {
+//     return !!(info.userName && info.date && info.startTime && info.endTime);
+//   };
 
-  const suggestRoom = (info: BookingInfo) => {
-    let suitable = [...rooms];
+//   const suggestRoom = (info: BookingInfo) => {
+//     let suitable = [...rooms];
     
-    if (info.capacity) {
-      suitable = suitable.filter(r => r.capacity >= info.capacity);
-    }
+//     if (info.capacity) {
+//       suitable = suitable.filter(r => r.capacity >= info.capacity);
+//     }
     
-    if (suitable.length === 0) suitable = rooms;
+//     if (suitable.length === 0) suitable = rooms;
     
-    return suitable.sort((a, b) => a.baseHourlyRate - b.baseHourlyRate)[0];
-  };
+//     return suitable.sort((a, b) => a.baseHourlyRate - b.baseHourlyRate)[0];
+//   };
 
-  const calculatePrice = (roomId: string, startTime: string, endTime: string) => {
-    const room = rooms.find(r => r.id === roomId);
-    if (!room) return 0;
+//   const calculatePrice = (roomId: string, startTime: string, endTime: string) => {
+//     const room = rooms.find(r => r.id === roomId);
+//     if (!room) return 0;
 
-    const [startHour] = startTime.split(':').map(Number);
-    const [endHour] = endTime.split(':').map(Number);
-    const duration = endHour - startHour;
+//     const [startHour] = startTime.split(':').map(Number);
+//     const [endHour] = endTime.split(':').map(Number);
+//     const duration = endHour - startHour;
 
-    return room.baseHourlyRate * duration;
-  };
+//     return room.baseHourlyRate * duration;
+//   };
 
-  // ACTUAL BOOKING EXECUTION
-  const executeBooking = async (info: BookingInfo): Promise<void> => {
-    console.log('🎯 EXECUTING BOOKING:', info);
+//   // ACTUAL BOOKING EXECUTION
+//   const executeBooking = async (info: BookingInfo): Promise<void> => {
+//     console.log('🎯 EXECUTING BOOKING:', info);
     
-    try {
-      setIsBooking(true);
+//     try {
+//       setIsBooking(true);
 
-      if (!info.roomId) {
-        const suggested = suggestRoom(info);
-        info.roomId = suggested.id;
-      }
+//       if (!info.roomId) {
+//         const suggested = suggestRoom(info);
+//         info.roomId = suggested.id;
+//       }
 
-      const room = rooms.find(r => r.id === info.roomId);
+//       const room = rooms.find(r => r.id === info.roomId);
       
-      const startDateTime = `${info.date}T${info.startTime}`;
-      const endDateTime = `${info.date}T${info.endTime}`;
+//       const startDateTime = `${info.date}T${info.startTime}`;
+//       const endDateTime = `${info.date}T${info.endTime}`;
 
-      const bookingPayload = {
-        roomId: info.roomId,
-        userName: info.userName!,
-        startTime: new Date(startDateTime).toISOString(),
-        endTime: new Date(endDateTime).toISOString()
-      };
+//       const bookingPayload = {
+//         roomId: info.roomId,
+//         userName: info.userName!,
+//         startTime: new Date(startDateTime).toISOString(),
+//         endTime: new Date(endDateTime).toISOString()
+//       };
 
-      console.log('📤 CALLING API:', bookingPayload);
+//       console.log('📤 CALLING API:', bookingPayload);
 
-      // REAL API CALL
-      const result = await bookingsApi.create(bookingPayload);
+//       // REAL API CALL
+//       const result = await bookingsApi.create(bookingPayload);
 
-      console.log('✅ BOOKING CREATED:', result);
+//       console.log('✅ BOOKING CREATED:', result);
 
-      const successMsg: Message = {
-        id: Date.now().toString(),
-        role: 'system',
-        content: `🎉 **BOOKING CONFIRMED!**
+//       const successMsg: Message = {
+//         id: Date.now().toString(),
+//         role: 'system',
+//         content: `🎉 **BOOKING CONFIRMED!**
 
-✅ **Booking ID:** \`${result.bookingId}\`
-🏢 **Room:** ${room?.name}
-👤 **Name:** ${info.userName}
-📅 **Date:** ${info.date}
-🕐 **Time:** ${info.startTime.slice(0, 5)} - ${info.endTime.slice(0, 5)}
-💰 **Total Price:** ₹${result.totalPrice}
+// ✅ **Booking ID:** \`${result.bookingId}\`
+// 🏢 **Room:** ${room?.name}
+// 👤 **Name:** ${info.userName}
+// 📅 **Date:** ${info.date}
+// 🕐 **Time:** ${info.startTime.slice(0, 5)} - ${info.endTime.slice(0, 5)}
+// 💰 **Total Price:** ₹${result.totalPrice}
 
-**Status:** ${result.status}
+// **Status:** ${result.status}
 
-Your booking is confirmed! Check "My Bookings" to manage it. 🎊`,
-        timestamp: new Date(),
-        bookingData: result
-      };
+// Your booking is confirmed! Check "My Bookings" to manage it. 🎊`,
+//         timestamp: new Date(),
+//         bookingData: result
+//       };
 
-      setMessages(prev => [...prev, successMsg]);
+//       setMessages(prev => [...prev, successMsg]);
 
-      if (onBookingSuccess) {
-        onBookingSuccess(result);
-      }
+//       if (onBookingSuccess) {
+//         onBookingSuccess(result);
+//       }
 
-      bookingInfoRef.current = {};
+//       bookingInfoRef.current = {};
 
-    } catch (error: any) {
-      console.error('❌ BOOKING FAILED:', error);
+//     } catch (error: any) {
+//       console.error('❌ BOOKING FAILED:', error);
       
-      const errorMsg: Message = {
-        id: Date.now().toString(),
-        role: 'assistant',
-        content: `❌ **Booking Failed**
+//       const errorMsg: Message = {
+//         id: Date.now().toString(),
+//         role: 'assistant',
+//         content: `❌ **Booking Failed**
 
-**Error:** ${error.response?.data?.error || error.message}
+// **Error:** ${error.response?.data?.error || error.message}
 
-Let me help you fix this! What would you like to adjust? 💪`,
-        timestamp: new Date()
-      };
+// Let me help you fix this! What would you like to adjust? 💪`,
+//         timestamp: new Date()
+//       };
 
-      setMessages(prev => [...prev, errorMsg]);
-    } finally {
-      setIsBooking(false);
-    }
-  };
+//       setMessages(prev => [...prev, errorMsg]);
+//     } finally {
+//       setIsBooking(false);
+//     }
+//   };
 
-  // GET GEMINI AI RESPONSE
-  const getGeminiResponse = async (userMessage: string, bookingInfo: BookingInfo): Promise<string> => {
-    const modelsToTry = ['gemini-2.0-flash', 'gemini-1.5-flash'];
+//   // GET GEMINI AI RESPONSE
+//   const getGeminiResponse = async (userMessage: string, bookingInfo: BookingInfo): Promise<string> => {
+//     const modelsToTry = ['gemini-2.0-flash', 'gemini-1.5-flash'];
 
-    for (const model of modelsToTry) {
-      try {
-        console.log(`🤖 Trying Gemini model: ${model}`);
+//     for (const model of modelsToTry) {
+//       try {
+//         console.log(`🤖 Trying Gemini model: ${model}`);
 
-        const contextPrompt = `You are an AI booking assistant that helps users book meeting rooms.
+//         const contextPrompt = `You are an AI booking assistant that helps users book meeting rooms.
 
-${getRoomContext()}
+// ${getRoomContext()}
 
-**Current booking information collected:**
-${Object.keys(bookingInfo).length > 0 ? JSON.stringify(bookingInfo, null, 2) : 'None yet'}
+// **Current booking information collected:**
+// ${Object.keys(bookingInfo).length > 0 ? JSON.stringify(bookingInfo, null, 2) : 'None yet'}
 
-**Conversation context:**
-${messages.slice(-4).map(m => `${m.role}: ${m.content}`).join('\n')}
+// **Conversation context:**
+// ${messages.slice(-4).map(m => `${m.role}: ${m.content}`).join('\n')}
 
-User's message: "${userMessage}"
+// User's message: "${userMessage}"
 
-**Your role:**
-1. Help users find suitable rooms based on their needs
-2. Answer questions about rooms, pricing, policies, amenities
-3. Extract booking details from conversation naturally
-4. When you have all required info (name, date, start time, end time), inform the user you're ready to confirm
-5. Be conversational, friendly, and helpful
+// **Your role:**
+// 1. Help users find suitable rooms based on their needs
+// 2. Answer questions about rooms, pricing, policies, amenities
+// 3. Extract booking details from conversation naturally
+// 4. When you have all required info (name, date, start time, end time), inform the user you're ready to confirm
+// 5. Be conversational, friendly, and helpful
 
-**Important:**
-- DO NOT say you can't book - you CAN book directly
-- If user confirms, the system will execute the booking
-- Guide users naturally toward providing: name, room/capacity, date, time
-- Answer general questions intelligently
+// **Important:**
+// - DO NOT say you can't book - you CAN book directly
+// - If user confirms, the system will execute the booking
+// - Guide users naturally toward providing: name, room/capacity, date, time
+// - Answer general questions intelligently
 
-**Required for booking:**
-- User name
-- Date
-- Start time  
-- End time
-- Room preference OR capacity (we'll suggest best room)
+// **Required for booking:**
+// - User name
+// - Date
+// - Start time  
+// - End time
+// - Room preference OR capacity (we'll suggest best room)
 
-Respond naturally (max 150 words):`;
+// Respond naturally (max 150 words):`;
 
-        const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=AIzaSyCBDJsqgohGLi6R2c7X3IXE6tozlYcO5-4`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: contextPrompt }] }],
-              generationConfig: {
-                temperature: 0.7,
-                maxOutputTokens: 500,
-              }
-            })
-          }
-        );
+//         const response = await fetch(
+//           `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=AIzaSyCBDJsqgohGLi6R2c7X3IXE6tozlYcO5-4`,
+//           {
+//             method: 'POST',
+//             headers: { 'Content-Type': 'application/json' },
+//             body: JSON.stringify({
+//               contents: [{ parts: [{ text: contextPrompt }] }],
+//               generationConfig: {
+//                 temperature: 0.7,
+//                 maxOutputTokens: 500,
+//               }
+//             })
+//           }
+//         );
 
-        if (response.ok) {
-          const data = await response.json();
-          const aiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
+//         if (response.ok) {
+//           const data = await response.json();
+//           const aiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
           
-          if (aiResponse?.trim()) {
-            console.log(`✅ Gemini response from ${model}`);
-            return aiResponse.trim();
-          }
-        }
-      } catch (error) {
-        console.error(`Error with ${model}:`, error);
-      }
-    }
+//           if (aiResponse?.trim()) {
+//             console.log(`✅ Gemini response from ${model}`);
+//             return aiResponse.trim();
+//           }
+//         }
+//       } catch (error) {
+//         console.error(`Error with ${model}:`, error);
+//       }
+//     }
 
-    console.warn('⚠️ All Gemini models failed, using smart fallback');
-    setUseGemini(false);
-    return getSmartFallback(userMessage, bookingInfo);
-  };
+//     console.warn('⚠️ All Gemini models failed, using smart fallback');
+//     setUseGemini(false);
+//     return getSmartFallback(userMessage, bookingInfo);
+//   };
 
-  // SMART FALLBACK (when Gemini fails)
-  const getSmartFallback = (message: string, info: BookingInfo): string => {
-    const msgLower = message.toLowerCase();
+//   // SMART FALLBACK (when Gemini fails)
+//   const getSmartFallback = (message: string, info: BookingInfo): string => {
+//     const msgLower = message.toLowerCase();
     
-    // Check what info we have
-    const missing = [];
-    if (!info.userName) missing.push('your name');
-    if (!info.date) missing.push('date');
-    if (!info.startTime) missing.push('start time');
-    if (!info.endTime) missing.push('end time');
+//     // Check what info we have
+//     const missing = [];
+//     if (!info.userName) missing.push('your name');
+//     if (!info.date) missing.push('date');
+//     if (!info.startTime) missing.push('start time');
+//     if (!info.endTime) missing.push('end time');
 
-    // General questions
-    if (msgLower.match(/\b(price|cost|rate|expensive|cheap)\b/)) {
-      const sorted = [...rooms].sort((a, b) => a.baseHourlyRate - b.baseHourlyRate);
-      return `💰 **Room Pricing:**
+//     // General questions
+//     if (msgLower.match(/\b(price|cost|rate|expensive|cheap)\b/)) {
+//       const sorted = [...rooms].sort((a, b) => a.baseHourlyRate - b.baseHourlyRate);
+//       return `💰 **Room Pricing:**
 
-**Most Affordable:**
-${sorted.slice(0, 2).map(r => `• ${r.name}: ₹${r.baseHourlyRate}/hr (₹${r.baseHourlyRate * 1.5}/hr peak)`).join('\n')}
+// **Most Affordable:**
+// ${sorted.slice(0, 2).map(r => `• ${r.name}: ₹${r.baseHourlyRate}/hr (₹${r.baseHourlyRate * 1.5}/hr peak)`).join('\n')}
 
-**Premium:**
-${sorted.slice(-2).map(r => `• ${r.name}: ₹${r.baseHourlyRate}/hr (₹${r.baseHourlyRate * 1.5}/hr peak)`).join('\n')}
+// **Premium:**
+// ${sorted.slice(-2).map(r => `• ${r.name}: ₹${r.baseHourlyRate}/hr (₹${r.baseHourlyRate * 1.5}/hr peak)`).join('\n')}
 
-Peak hours: Mon-Fri 10AM-1PM & 4PM-7PM 📈
+// Peak hours: Mon-Fri 10AM-1PM & 4PM-7PM 📈
 
-What fits your budget?`;
-    }
+// What fits your budget?`;
+//     }
 
-    if (msgLower.match(/\b(capacity|people|seats)\b/)) {
-      return `👥 **Room Capacities:**
+//     if (msgLower.match(/\b(capacity|people|seats)\b/)) {
+//       return `👥 **Room Capacities:**
 
-${rooms.map(r => `• ${r.name}: Up to ${r.capacity} people - ₹${r.baseHourlyRate}/hr`).join('\n')}
+// ${rooms.map(r => `• ${r.name}: Up to ${r.capacity} people - ₹${r.baseHourlyRate}/hr`).join('\n')}
 
-How many people are you planning for?`;
-    }
+// How many people are you planning for?`;
+//     }
 
-    if (msgLower.match(/\b(available|rooms|list)\b/)) {
-      return `🏢 **All ${rooms.length} Available Rooms:**
+//     if (msgLower.match(/\b(available|rooms|list)\b/)) {
+//       return `🏢 **All ${rooms.length} Available Rooms:**
 
-${rooms.map((r, i) => `**${i + 1}. ${r.name}**\n   👥 ${r.capacity} people | 💰 ₹${r.baseHourlyRate}/hr`).join('\n\n')}
+// ${rooms.map((r, i) => `**${i + 1}. ${r.name}**\n   👥 ${r.capacity} people | 💰 ₹${r.baseHourlyRate}/hr`).join('\n\n')}
 
-Which interests you?`;
-    }
+// Which interests you?`;
+//     }
 
-    if (msgLower.match(/\b(policy|rules|cancel|hours)\b/)) {
-      return `📋 **Booking Policies:**
+//     if (msgLower.match(/\b(policy|rules|cancel|hours)\b/)) {
+//       return `📋 **Booking Policies:**
 
-⏰ **Hours:** 6AM - 11PM daily
-⏱️ **Duration:** 30 min - 12 hours
-❌ **Cancellation:** 2+ hours before start
-💰 **Peak Pricing:** 1.5× (Mon-Fri 10AM-1PM, 4PM-7PM)
+// ⏰ **Hours:** 6AM - 11PM daily
+// ⏱️ **Duration:** 30 min - 12 hours
+// ❌ **Cancellation:** 2+ hours before start
+// 💰 **Peak Pricing:** 1.5× (Mon-Fri 10AM-1PM, 4PM-7PM)
 
-Questions?`;
-    }
+// Questions?`;
+//     }
 
-    // Booking guidance
-    if (missing.length > 0) {
-      return `📝 **To book, I need:**
+//     // Booking guidance
+//     if (missing.length > 0) {
+//       return `📝 **To book, I need:**
 
-${missing.map((m, i) => `${i + 1}. ${m}`).join('\n')}
+// ${missing.map((m, i) => `${i + 1}. ${m}`).join('\n')}
 
-Example: "Book Cabin 1 for John on Nov 18 from 2PM to 4PM"
+// Example: "Book Cabin 1 for John on Nov 18 from 2PM to 4PM"
 
-What can you tell me? 😊`;
-    }
+// What can you tell me? 😊`;
+//     }
 
-    return '🤔 I can help you with room info, pricing, or booking! What would you like to know?';
-  };
+//     return '🤔 I can help you with room info, pricing, or booking! What would you like to know?';
+//   };
 
-  // MAIN MESSAGE HANDLER
-  const handleUserMessage = async (userMessage: string) => {
-    console.log('💬 Processing:', userMessage);
+//   // MAIN MESSAGE HANDLER
+//   const handleUserMessage = async (userMessage: string) => {
+//     console.log('💬 Processing:', userMessage);
 
-    // Extract booking info
-    const extracted = extractBookingInfo(userMessage);
-    console.log('📊 Extracted:', extracted);
+//     // Extract booking info
+//     const extracted = extractBookingInfo(userMessage);
+//     console.log('📊 Extracted:', extracted);
 
-    const currentInfo = mergeBookingInfo(extracted);
-    console.log('📦 Current info:', currentInfo);
+//     const currentInfo = mergeBookingInfo(extracted);
+//     console.log('📦 Current info:', currentInfo);
 
-    // Check for confirmation
-    const isConfirmation = /\b(yes|confirm|book it|proceed|go ahead|sure)\b/i.test(userMessage);
+//     // Check for confirmation
+//     const isConfirmation = /\b(yes|confirm|book it|proceed|go ahead|sure)\b/i.test(userMessage);
 
-    // If awaiting confirmation and user confirms - EXECUTE BOOKING
-    if (currentInfo.awaitingConfirmation && isConfirmation) {
-      console.log('✅ CONFIRMED - BOOKING NOW');
-      await executeBooking(currentInfo);
-      return;
-    }
+//     // If awaiting confirmation and user confirms - EXECUTE BOOKING
+//     if (currentInfo.awaitingConfirmation && isConfirmation) {
+//       console.log('✅ CONFIRMED - BOOKING NOW');
+//       await executeBooking(currentInfo);
+//       return;
+//     }
 
-    // If we have complete info - ask for confirmation
-    if (hasCompleteInfo(currentInfo) && !currentInfo.awaitingConfirmation) {
-      const room = currentInfo.roomId ? 
-        rooms.find(r => r.id === currentInfo.roomId) : 
-        suggestRoom(currentInfo);
+//     // If we have complete info - ask for confirmation
+//     if (hasCompleteInfo(currentInfo) && !currentInfo.awaitingConfirmation) {
+//       const room = currentInfo.roomId ? 
+//         rooms.find(r => r.id === currentInfo.roomId) : 
+//         suggestRoom(currentInfo);
 
-      const price = calculatePrice(room!.id, currentInfo.startTime!, currentInfo.endTime!);
+//       const price = calculatePrice(room!.id, currentInfo.startTime!, currentInfo.endTime!);
 
-      bookingInfoRef.current.awaitingConfirmation = true;
+//       bookingInfoRef.current.awaitingConfirmation = true;
 
-      return `✅ **Perfect! Ready to book:**
+//       return `✅ **Perfect! Ready to book:**
 
-🏢 **Room:** ${room?.name}
-👤 **Name:** ${currentInfo.userName}
-📅 **Date:** ${currentInfo.date}
-🕐 **Time:** ${currentInfo.startTime?.slice(0, 5)} - ${currentInfo.endTime?.slice(0, 5)}
-💰 **Estimated:** ₹${price}
+// 🏢 **Room:** ${room?.name}
+// 👤 **Name:** ${currentInfo.userName}
+// 📅 **Date:** ${currentInfo.date}
+// 🕐 **Time:** ${currentInfo.startTime?.slice(0, 5)} - ${currentInfo.endTime?.slice(0, 5)}
+// 💰 **Estimated:** ₹${price}
 
-**Reply "yes" or "confirm" to complete booking!** 🎯`;
-    }
+// **Reply "yes" or "confirm" to complete booking!** 🎯`;
+//     }
 
-    // Otherwise, get AI response
-    if (useGemini) {
-      try {
-        return await getGeminiResponse(userMessage, currentInfo);
-      } catch (error) {
-        console.error('Gemini failed, using fallback');
-        return getSmartFallback(userMessage, currentInfo);
-      }
-    } else {
-      return getSmartFallback(userMessage, currentInfo);
-    }
-  };
+//     // Otherwise, get AI response
+//     if (useGemini) {
+//       try {
+//         return await getGeminiResponse(userMessage, currentInfo);
+//       } catch (error) {
+//         console.error('Gemini failed, using fallback');
+//         return getSmartFallback(userMessage, currentInfo);
+//       }
+//     } else {
+//       return getSmartFallback(userMessage, currentInfo);
+//     }
+//   };
 
-  const handleSend = async () => {
-    if (!input.trim() || isLoading || isBooking) return;
+//   const handleSend = async () => {
+//     if (!input.trim() || isLoading || isBooking) return;
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: input.trim(),
-      timestamp: new Date()
-    };
+//     const userMessage: Message = {
+//       id: Date.now().toString(),
+//       role: 'user',
+//       content: input.trim(),
+//       timestamp: new Date()
+//     };
 
-    setMessages(prev => [...prev, userMessage]);
-    const currentInput = input.trim();
-    setInput('');
-    setIsLoading(true);
-    setIsTyping(true);
+//     setMessages(prev => [...prev, userMessage]);
+//     const currentInput = input.trim();
+//     setInput('');
+//     setIsLoading(true);
+//     setIsTyping(true);
 
-    try {
-      const response = await handleUserMessage(currentInput);
+//     try {
+//       const response = await handleUserMessage(currentInput);
       
-      if (response) {
-        setTimeout(() => {
-          const assistantMessage: Message = {
-            id: (Date.now() + 1).toString(),
-            role: 'assistant',
-            content: response,
-            timestamp: new Date()
-          };
+//       if (response) {
+//         setTimeout(() => {
+//           const assistantMessage: Message = {
+//             id: (Date.now() + 1).toString(),
+//             role: 'assistant',
+//             content: response,
+//             timestamp: new Date()
+//           };
           
-          setMessages(prev => [...prev, assistantMessage]);
-          setIsTyping(false);
-        }, 600);
-      } else {
-        setIsTyping(false);
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      setIsTyping(false);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+//           setMessages(prev => [...prev, assistantMessage]);
+//           setIsTyping(false);
+//         }, 600);
+//       } else {
+//         setIsTyping(false);
+//       }
+//     } catch (error) {
+//       console.error('Error:', error);
+//       setIsTyping(false);
+//     } finally {
+//       setIsLoading(false);
+//     }
+//   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  };
+//   const handleKeyPress = (e: React.KeyboardEvent) => {
+//     if (e.key === 'Enter' && !e.shiftKey) {
+//       e.preventDefault();
+//       handleSend();
+//     }
+//   };
 
-  const quickExamples = [
-    'Book Cabin 1 for John tomorrow 2PM-4PM',
-    'What rooms do you have?',
-    'Show me pricing',
-    'I need a room for 8 people'
-  ];
+//   const quickExamples = [
+//     'Book Cabin 1 for John tomorrow 2PM-4PM',
+//     'What rooms do you have?',
+//     'Show me pricing',
+//     'I need a room for 8 people'
+//   ];
 
-  return (
-    <div className="ai-assistant-overlay">
-      <div className="ai-assistant-container">
-        <div className="ai-assistant-header">
-          <div className="ai-assistant-header-content">
-            <div className="ai-assistant-avatar">🤖</div>
-            <div>
-              <h3 className="ai-assistant-title">AI Booking Assistant</h3>
-              <p className="ai-assistant-subtitle">
-                {useGemini ? 'Powered by Google Gemini ✨' : 'Smart Mode 💡'}
-              </p>
-            </div>
-          </div>
-          <button className="ai-assistant-close" onClick={onClose}>×</button>
-        </div>
+//   return (
+//     <div className="ai-assistant-overlay">
+//       <div className="ai-assistant-container">
+//         <div className="ai-assistant-header">
+//           <div className="ai-assistant-header-content">
+//             <div className="ai-assistant-avatar">🤖</div>
+//             <div>
+//               <h3 className="ai-assistant-title">AI Booking Assistant</h3>
+//               <p className="ai-assistant-subtitle">
+//                 {useGemini ? 'Powered by Google Gemini ✨' : 'Smart Mode 💡'}
+//               </p>
+//             </div>
+//           </div>
+//           <button className="ai-assistant-close" onClick={onClose}>×</button>
+//         </div>
 
-        {messages.length <= 2 && (
-          <div className="quick-questions">
-            <p className="quick-questions-title">Quick start:</p>
-            <div className="quick-questions-grid">
-              {quickExamples.map((example, i) => (
-                <button
-                  key={i}
-                  className="quick-question-btn"
-                  onClick={() => setInput(example)}
-                >
-                  {example}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+//         {messages.length <= 2 && (
+//           <div className="quick-questions">
+//             <p className="quick-questions-title">Quick start:</p>
+//             <div className="quick-questions-grid">
+//               {quickExamples.map((example, i) => (
+//                 <button
+//                   key={i}
+//                   className="quick-question-btn"
+//                   onClick={() => setInput(example)}
+//                 >
+//                   {example}
+//                 </button>
+//               ))}
+//             </div>
+//           </div>
+//         )}
 
-        <div className="ai-assistant-messages">
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`ai-message ${
-                message.role === 'user' ? 'ai-message-user' : 
-                message.role === 'system' ? 'ai-message-system' :
-                'ai-message-assistant'
-              }`}
-            >
-              <div className="ai-message-avatar">
-                {message.role === 'user' ? '👤' : 
-                 message.role === 'system' ? '✅' : '🤖'}
-              </div>
-              <div className="ai-message-content">
-                <div className="ai-message-text">{message.content}</div>
-                <div className="ai-message-time">
-                  {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </div>
-              </div>
-            </div>
-          ))}
+//         <div className="ai-assistant-messages">
+//           {messages.map((message) => (
+//             <div
+//               key={message.id}
+//               className={`ai-message ${
+//                 message.role === 'user' ? 'ai-message-user' : 
+//                 message.role === 'system' ? 'ai-message-system' :
+//                 'ai-message-assistant'
+//               }`}
+//             >
+//               <div className="ai-message-avatar">
+//                 {message.role === 'user' ? '👤' : 
+//                  message.role === 'system' ? '✅' : '🤖'}
+//               </div>
+//               <div className="ai-message-content">
+//                 <div className="ai-message-text">{message.content}</div>
+//                 <div className="ai-message-time">
+//                   {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+//                 </div>
+//               </div>
+//             </div>
+//           ))}
           
-          {(isTyping || isBooking) && (
-            <div className="ai-message ai-message-assistant">
-              <div className="ai-message-avatar">
-                {isBooking ? '⚡' : '🤖'}
-              </div>
-              <div className="ai-message-content">
-                {isBooking ? (
-                  <div className="ai-message-text booking-in-progress">
-                    ⚡ Creating your booking...
-                  </div>
-                ) : (
-                  <div className="ai-typing-indicator">
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
+//           {(isTyping || isBooking) && (
+//             <div className="ai-message ai-message-assistant">
+//               <div className="ai-message-avatar">
+//                 {isBooking ? '⚡' : '🤖'}
+//               </div>
+//               <div className="ai-message-content">
+//                 {isBooking ? (
+//                   <div className="ai-message-text booking-in-progress">
+//                     ⚡ Creating your booking...
+//                   </div>
+//                 ) : (
+//                   <div className="ai-typing-indicator">
+//                     <span></span>
+//                     <span></span>
+//                     <span></span>
+//                   </div>
+//                 )}
+//               </div>
+//             </div>
+//           )}
           
-          <div ref={messagesEndRef} />
-        </div>
+//           <div ref={messagesEndRef} />
+//         </div>
 
-        <div className="ai-assistant-input-container">
-          <input
-            type="text"
-            className="ai-assistant-input"
-            placeholder="Ask anything or book: 'Cabin 1 for John on Nov 18 2PM-4PM'"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyPress={handleKeyPress}
-            disabled={isLoading || isBooking}
-          />
-          <button
-            className="ai-assistant-send"
-            onClick={handleSend}
-            disabled={!input.trim() || isLoading || isBooking}
-          >
-            {isLoading || isBooking ? '⏳' : '➤'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
+//         <div className="ai-assistant-input-container">
+//           <input
+//             type="text"
+//             className="ai-assistant-input"
+//             placeholder="Ask anything or book: 'Cabin 1 for John on Nov 18 2PM-4PM'"
+//             value={input}
+//             onChange={(e) => setInput(e.target.value)}
+//             onKeyPress={handleKeyPress}
+//             disabled={isLoading || isBooking}
+//           />
+//           <button
+//             className="ai-assistant-send"
+//             onClick={handleSend}
+//             disabled={!input.trim() || isLoading || isBooking}
+//           >
+//             {isLoading || isBooking ? '⏳' : '➤'}
+//           </button>
+//         </div>
+//       </div>
+//     </div>
+//   );
+// };
 
-Updated AI Assistant with Voice assistnat 
+// Updated AI Assistant with Voice assistnat 
 
 
 
