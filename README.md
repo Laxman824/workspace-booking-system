@@ -1,11 +1,4 @@
 
----
-
-## 📄 README.md
-
-**README.md** (REPLACE EXISTING)
-
-```markdown
 # 🚀 Workspace Booking & Pricing System
 
 A full-stack AI-powered workspace booking system with real-time voice chat, dynamic pricing, conflict detection, and analytics dashboard.
@@ -93,4 +86,4 @@ A full-stack AI-powered workspace booking system with real-time voice chat, dyna
 
 ```bash
 git clone https://github.com/Laxman824/workspace-booking-system.git
-cd workspace-booking-system
+cd workspace-booking-system ```
